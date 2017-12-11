@@ -12,6 +12,8 @@
 #import "UIImageView+WebCache.h"
 #import "SDImageCache.h"
 
+#define kUserDefaults [NSUserDefaults standardUserDefaults]
+
 @interface SPADLaunchManager ()
 @property (nonatomic, strong) UIWindow *window;
 @property (nonatomic, strong) UIButton *skipButton;
@@ -87,7 +89,16 @@
 #pragma mark - Private
 
 - (void)checkAD {
-    // 从沙盒中取，如果有图片，直接显示
+    
+    NSString *imageName = [kUserDefaults valueForKey:@""];
+    NSString *filePath = [self getFilePathWithImageName:imageName];
+    BOOL isExist = [self isFileExistWithFilePath:filePath];
+    if (isExist) {
+        self.adImage = [UIImage imageWithContentsOfFile:filePath];
+    }
+    
+    
+//    UIImage *image = [UIImage imageWithContentsOfFile:filePath];
     
     // 不管有没有图片都要发送请求，判断ad是否需要更新
     [self request];
@@ -106,6 +117,25 @@
 //            [[SDImageCache sharedImageCache] removeImageForKey:self.urlString withCompletion:nil];
 //        }
 //    }];
+}
+
+- (BOOL)isFileExistWithFilePath:(NSString *)filePath
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL isDirectory = FALSE;
+    return [fileManager fileExistsAtPath:filePath isDirectory:&isDirectory];
+}
+
+- (NSString *)getFilePathWithImageName:(NSString *)imageName {
+    if (imageName) {
+        
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory,NSUserDomainMask, YES);
+        NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:imageName];
+        
+        return filePath;
+    }
+    
+    return nil;
 }
 
 - (void)request {

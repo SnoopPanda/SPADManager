@@ -17,7 +17,16 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-    self.view.backgroundColor = [UIColor redColor];
+    self.title = @"Snoop Panda";
+    self.view.backgroundColor = [UIColor orangeColor];
+    
+    UILabel *textLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 300, 300)];
+    textLabel.text = @"我，屎努比，打钱！";
+    textLabel.font = [UIFont systemFontOfSize:30];
+    textLabel.textColor = [UIColor whiteColor];
+    textLabel.textAlignment = NSTextAlignmentCenter;
+    textLabel.center = self.view.center;
+    [self.view addSubview:textLabel];
 }
 
 - (void)didReceiveMemoryWarning {

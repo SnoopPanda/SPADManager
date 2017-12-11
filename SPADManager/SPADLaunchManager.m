@@ -13,13 +13,19 @@
 #import "SDImageCache.h"
 
 #define kUserDefaults [NSUserDefaults standardUserDefaults]
+#define kAdImageName @"kAdImageName"
+#define kAdUrlString @"kAdUrlString"
 
 @interface SPADLaunchManager ()
 @property (nonatomic, strong) UIWindow *window;
 @property (nonatomic, strong) UIButton *skipButton;
 @property (nonatomic, assign) NSUInteger countDownIndex;
 @property (nonatomic, assign) CFAbsoluteTime currentTime;
+
 @property (nonatomic, strong) UIImage *adImage;
+@property (nonatomic, strong) NSString *adUrlString;
+
+@property (nonatomic, strong) NSArray *dataArray; // 假数据
 
 @end
 
@@ -55,7 +61,6 @@
 
 - (void)appDidEnterBackground {
     self.currentTime = CFAbsoluteTimeGetCurrent();
-    [self request];
 }
 
 - (void)appWillEnterForeground {
@@ -83,6 +88,7 @@
     [self skipAD];
     UIViewController *rootVC = [UIApplication sharedApplication].delegate.window.rootViewController;
     SPADLaunchController *adLaunchController = [[SPADLaunchController alloc] init];
+    adLaunchController.adUrlString = self.adUrlString;
     [[rootVC currentNavigationController] pushViewController:adLaunchController animated:YES];
 }
 
@@ -90,33 +96,16 @@
 
 - (void)checkAD {
     
-    NSString *imageName = [kUserDefaults valueForKey:@""];
+    NSString *imageName = [kUserDefaults valueForKey:kAdImageName];
     NSString *filePath = [self getFilePathWithImageName:imageName];
     BOOL isExist = [self isFileExistWithFilePath:filePath];
     if (isExist) {
         self.adImage = [UIImage imageWithContentsOfFile:filePath];
+        self.adUrlString = [kUserDefaults valueForKey:kAdUrlString];
+        [self showAD];
     }
     
-    
-//    UIImage *image = [UIImage imageWithContentsOfFile:filePath];
-    
-    // 不管有没有图片都要发送请求，判断ad是否需要更新
-    [self request];
-    
-//    UIImage *image = [[SDImageCache sharedImageCache] imageFromDiskCacheForKey:self.urlString];
-//    if (image) {
-//        self.adImage = image;
-//        [self showAD];
-//    }
-//
-//    NSURL *imageUrl = [NSURL URLWithString:self.urlString];
-//    [[SDWebImageManager sharedManager] loadImageWithURL:imageUrl options:SDWebImageLowPriority | SDWebImageRetryFailed | SDWebImageRefreshCached progress:nil completed:^(UIImage *image, NSData *data, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
-//        if (image) {
-//            self.adImage = image;
-//        } else {
-//            [[SDImageCache sharedImageCache] removeImageForKey:self.urlString withCompletion:nil];
-//        }
-//    }];
+    [self fetchAD];
 }
 
 - (BOOL)isFileExistWithFilePath:(NSString *)filePath
@@ -138,8 +127,49 @@
     return nil;
 }
 
-- (void)request {
-    // 请求
+- (void)fetchAD {
+    // 发起请求，返回：图片名称，图片url以及跳转url
+    // 判断本地有没有该图片一样的key，如果没有下载图片并缓存，如果有什么都不做
+    // 假装这里有一个请求
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // 该请求返回如下参数
+        BOOL success = YES;
+        NSDictionary *dict = self.dataArray[arc4random()%3];
+        NSString *adImageName = dict[@"adImageName"];
+        NSString *adImageUrl = dict[@"adImageUrl"];
+        NSString *adUrlString = dict[@"adUrlString"];
+        if (success) {
+            NSString *filePath = [self getFilePathWithImageName:adImageName];
+            BOOL isExist = [self isFileExistWithFilePath:filePath];
+            if (!isExist) {
+                [self downloadAdImageWithName:adImageName imageUrl:adImageUrl adUrlString:(NSString *)adUrlString];
+            }
+        }
+    });
+}
+
+- (void)downloadAdImageWithName:(NSString *)adImageName imageUrl:(NSString *)adImageUrl adUrlString:(NSString *)adUrlString {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:adImageUrl]];
+        UIImage *image = [UIImage imageWithData:data];
+        NSString *filePath = [self getFilePathWithImageName:adImageName];
+        if ([UIImagePNGRepresentation(image) writeToFile:filePath atomically:YES]) {
+            [self deleteOldImage];
+            [kUserDefaults setValue:adImageName forKey:kAdImageName];
+            [kUserDefaults setValue:adUrlString forKey:kAdUrlString];
+            [kUserDefaults synchronize];
+        }
+    });
+}
+
+- (void)deleteOldImage
+{
+    NSString *imageName = [kUserDefaults valueForKey:kAdImageName];
+    if (imageName) {
+        NSString *filePath = [self getFilePathWithImageName:imageName];
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        [fileManager removeItemAtPath:filePath error:nil];
+    }
 }
 
 - (void)showAD {
@@ -183,6 +213,31 @@
             [self countDown];
         });
     }
+}
+
+#pragma mark -
+
+- (NSArray *)dataArray {
+    if (!_dataArray) {
+        _dataArray = @[
+                           @{
+                               @"adImageName" : @"Panda1",
+                               @"adImageUrl" : @"https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1513013980008&di=95ed32bfe235191f4d93c75dd506d66d&imgtype=0&src=http%3A%2F%2Fimg3.duitang.com%2Fuploads%2Fitem%2F201603%2F14%2F20160314151222_Pnm8V.jpeg",
+                               @"adUrlString" : @"http://www.jianshu.com/u/986bac88c8c8"
+                               },
+                           @{
+                               @"adImageName" : @"Panda2",
+                               @"adImageUrl" : @"https://ss2.bdstatic.com/70cFvnSh_Q1YnxGkpoWK1HF6hhy/it/u=2718520504,514501898&fm=27&gp=0.jpg",
+                               @"adUrlString" : @"http://www.jianshu.com/u/986bac88c8c8"
+                               },
+                           @{
+                               @"adImageName" : @"Panda3",
+                               @"adImageUrl" : @"https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1513610807&di=c38f560a53414eea52a0721ee45699bc&imgtype=jpg&er=1&src=http%3A%2F%2Fimg3.duitang.com%2Fuploads%2Fitem%2F201504%2F29%2F20150429095211_tsvBf.thumb.224_0.jpeg",
+                               @"adUrlString" : @"http://www.jianshu.com/u/986bac88c8c8"
+                               }
+                           ];
+    }
+    return _dataArray;
 }
 
 @end

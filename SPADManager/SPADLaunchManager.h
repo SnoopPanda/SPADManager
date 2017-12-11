@@ -11,8 +11,9 @@
 
 @interface SPADLaunchManager : NSObject
 
-@property (nonatomic, strong) NSString *requestUrl;
+// 倒计时最大值，默认3s
 @property (nonatomic, assign) NSUInteger maxCount;
+// 从后台回到前台，显示广告的间隔，默认60s
 @property (nonatomic, assign) CFTimeInterval showAdInterval;
 
 + (instancetype)sharedInstance;

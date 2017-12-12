@@ -9,8 +9,6 @@
 #import "SPADLaunchManager.h"
 #import "SPADLaunchController.h"
 #import "UIViewController+NavigationController.h"
-#import "UIImageView+WebCache.h"
-#import "SDImageCache.h"
 
 #define kUserDefaults [NSUserDefaults standardUserDefaults]
 #define kAdImageName @"kAdImageName"
@@ -38,7 +36,6 @@
         instance = [[self alloc] init];
     });
     return instance;
-
 }
 
 - (instancetype)init {
